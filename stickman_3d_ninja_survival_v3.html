@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Stickman 3D: Ninja Survival V3</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#080d19;color:#fff;font-family:system-ui,Arial}
+#game{position:fixed;inset:0}canvas{display:block}
+#hud{position:fixed;top:12px;left:12px;right:12px;display:flex;gap:8px;justify-content:space-between;z-index:2;pointer-events:none;flex-wrap:wrap}
+.stat{background:#0a1324dc;border:1px solid #ffffff2c;border-radius:12px;padding:8px 11px;font-size:13px;font-weight:800;backdrop-filter:blur(8px)}
+#healthWrap{width:116px;height:9px;background:#512b3c;border-radius:9px;overflow:hidden;margin-top:5px}#health{height:100%;width:100%;background:linear-gradient(90deg,#32e69b,#b7f56a);transition:width .15s}
+#bottom{position:fixed;bottom:14px;left:12px;right:12px;display:flex;justify-content:space-between;align-items:end;z-index:3;pointer-events:none}
+.pad{display:flex;gap:8px;pointer-events:auto}.btn{width:60px;height:58px;border-radius:16px;border:1px solid #ffffff55;background:#111e34e8;color:white;font-weight:900;font-size:22px;touch-action:none;box-shadow:0 5px 18px #0005}
+.btn.action{width:76px;height:66px;background:#7c3aed;border-color:#c4a7ff;font-size:13px}.btn.dash{background:#0e7490;border-color:#67e8f9}
+#tip{position:fixed;bottom:92px;left:0;right:0;text-align:center;font-size:11px;color:#dce8ffb8;pointer-events:none}
+#overlay{position:fixed;inset:0;z-index:5;display:grid;place-items:center;background:#050a14b8;padding:18px}
+.panel{width:min(440px,100%);padding:25px;border-radius:23px;border:1px solid #ffffff35;background:linear-gradient(145deg,#17253c,#0a1223);text-align:center;box-shadow:0 24px 90px #0009}
+h1{font-size:clamp(28px,7vw,42px);line-height:1.05;margin:0 0 10px;color:#a78bfa}
+p{color:#d3def0;line-height:1.5;font-size:14px}
+button.primary{border:0;border-radius:14px;padding:14px 22px;background:#a78bfa;color:#160d2e;font-size:16px;font-weight:900}
+.small{font-size:11px;color:#aebdd4}.hide{display:none!important}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="hud">
+ <div class="stat">🥷 NINJA SURVIVAL <div class="small">WAVE <span id="wave">1</span></div></div>
+ <div class="stat">❤️ HEALTH<div id="healthWrap"><div id="health"></div></div></div>
+ <div class="stat">⭐ SCORE <span id="score">0</span><div class="small">KOs: <span id="kos">0</span></div></div>
+</div>
+<div id="tip">Move: WASD / arrows · Strike: SPACE · Dash: SHIFT · Touch buttons on mobile</div>
+<div id="bottom">
+ <div class="pad"><button class="btn" id="left">◀</button><button class="btn" id="right">▶</button></div>
+ <div class="pad"><button class="btn dash" id="dash">DASH</button><button class="btn action" id="strike">✨<br>STRIKE</button></div>
+</div>
+<div id="overlay"><div class="panel">
+<h1>STICKMAN 3D<br>NINJA SURVIVAL</h1>
+<p>Choose your ninja, survive enemy waves and face powerful bosses. Use energy strikes and dashes to become the shadow champion.</p>
+<p><b>Choose your ninja</b></p>
+<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:12px 0 16px">
+<button class="primary skin" data-skin="violet" style="padding:10px 13px;background:#a78bfa">Shadow</button>
+<button class="primary skin" data-skin="crimson" style="padding:10px 13px;background:#fb7185">Crimson</button>
+<button class="primary skin" data-skin="jade" style="padding:10px 13px;background:#34d399">Jade</button>
+</div>
+<p id="skinLabel" class="small">Selected: Shadow Ninja</p>
+<p><b>Controls</b><br>Move: WASD / arrow keys<br>Strike: Space · Dash: Shift<br>Mobile: use the on-screen buttons</p>
+<button class="primary" id="start">START SURVIVAL</button>
+<p class="small">Arcade action · No graphic violence</p>
+</div></div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+const root=document.querySelector('#game');
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x10182b);scene.fog=new THREE.Fog(0x10182b,18,48);
+const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,100);camera.position.set(0,11,15);camera.lookAt(0,0,0);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;root.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xc6d8ff,0x24233e,2));
+const key=new THREE.DirectionalLight(0xffffff,2.4);key.position.set(-6,12,8);key.castShadow=true;key.shadow.mapSize.set(1024,1024);scene.add(key);
+const mat=(c,em=0)=>new THREE.MeshStandardMaterial({color:c,roughness:.7,emissive:c,emissiveIntensity:em});
+const floor=new THREE.Mesh(new THREE.CylinderGeometry(11,11,.5,64),mat(0x202b42));floor.position.y=-.35;floor.receiveShadow=true;scene.add(floor);
+const ring=new THREE.Mesh(new THREE.TorusGeometry(9.5,.09,8,100),mat(0x8b5cf6,.8));ring.rotation.x=Math.PI/2;ring.position.y=-.08;scene.add(ring);
+for(let i=0;i<16;i++){let a=i/16*Math.PI*2;let pillar=new THREE.Mesh(new THREE.CylinderGeometry(.28,.38,2.4,8),mat(0x35445f));pillar.position.set(Math.cos(a)*10,1,Math.sin(a)*10);pillar.castShadow=true;scene.add(pillar);let orb=new THREE.Mesh(new THREE.SphereGeometry(.16,12,8),mat(0x67e8f9,1.3));orb.position.set(Math.cos(a)*10,2.3,Math.sin(a)*10);scene.add(orb)}
+const player=new THREE.Group();scene.add(player);
+const dark=mat(0x10131f),purple=mat(0x8b5cf6,.4),skin=mat(0xdbeafe),cyan=mat(0x67e8f9,.7);
+let selectedSkin='violet';
+const skinColors={violet:{body:0x171b2d,accent:0xa78bfa,label:'Shadow Ninja'},crimson:{body:0x35131e,accent:0xfb7185,label:'Crimson Ninja'},jade:{body:0x10352b,accent:0x34d399,label:'Jade Ninja'}};
+function ball(parent,r,m,x,y,z){let o=new THREE.Mesh(new THREE.SphereGeometry(r,14,10),m);o.position.set(x,y,z);o.castShadow=true;parent.add(o);return o}
+function stickFigure(group,color,accent){let bodymat=mat(color),ac=mat(accent,.3);ball(group,.25,bodymat,0,1.65,0);let torso=new THREE.Mesh(new THREE.CylinderGeometry(.15,.2,.65,9),bodymat);torso.position.y=1.12;torso.castShadow=true;group.add(torso);
+let parts=[];function limb(x,y,len,r,m){let o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,8),m);o.position.set(x,y,0);o.castShadow=true;group.add(o);parts.push(o);return o}
+limb(-.24,1.15,.56,.065,bodymat);limb(.24,1.15,.56,.065,bodymat);limb(-.13,.48,.65,.08,bodymat);limb(.13,.48,.65,.08,bodymat);
+let band=new THREE.Mesh(new THREE.BoxGeometry(.5,.12,.1),ac);band.position.set(0,1.74,.18);group.add(band);
+let scarf=new THREE.Mesh(new THREE.BoxGeometry(.65,.09,.16),ac);scarf.position.set(0,1.42,-.18);group.add(scarf);
+return {parts,torso};}
+const hero=stickFigure(player,0x171b2d,0xa78bfa);player.position.set(0,0,0);
+let enemies=[],effects=[],keys={},health=100,score=0,kos=0,wave=1,playing=false,attackCooldown=0,dashCooldown=0,invuln=0,spawnTimer=0,waveDelay=0;
+const $=id=>document.getElementById(id);
+function makeEnemy(){
+ let boss=(wave%5===0 && enemies.length===0);
+ let g=new THREE.Group();stickFigure(g,boss?0x45235f:0x7f334d,boss?0xffc857:0xff829a);
+ if(boss)g.scale.setScalar(1.8);
+ let a=Math.random()*Math.PI*2,r=6.5+Math.random()*1.3;
+ g.position.set(Math.cos(a)*r,0,Math.sin(a)*r);scene.add(g);
+ enemies.push({g,hp:boss?10:2,speed:boss?.82:1.15+Math.min(wave*.08,.8),cool:Math.random()*.7,boss});
+ if(boss)$('wave').textContent='BOSS '+wave;
+}
+function burst(pos,color=0x9b8cff){let m=new THREE.Mesh(new THREE.TorusGeometry(.45,.07,8,24),mat(color,1));m.position.copy(pos);m.position.y=.9;m.rotation.x=Math.PI/2;scene.add(m);effects.push({m,t:.35})}
+function updateHud(){$('health').style.width=Math.max(0,health)+'%';$('score').textContent=score;$('kos').textContent=kos;$('wave').textContent=wave}
+function start(){
+ enemies.forEach(e=>scene.remove(e.g));enemies=[];effects.forEach(e=>scene.remove(e.m));effects=[];
+ player.position.set(0,0,0);health=100;score=0;kos=0;wave=1;spawnTimer=.4;waveDelay=0;
+ attackCooldown=0;dashCooldown=0;invuln=0;playing=true;
+ const c=skinColors[selectedSkin];hero.parts.forEach(p=>p.material.color.setHex(c.body));hero.torso.material.color.setHex(c.body);
+ player.children.forEach(o=>{if(o.material&&o.material.color&&o.material.color.getHex()===0xa78bfa)o.material.color.setHex(c.accent)});
+ $('overlay').classList.add('hide');updateHud()
+}
+function finish(){playing=false;$('overlay').innerHTML=`<div class="panel"><h1>ROUND OVER</h1><p>You reached <b>Wave ${wave}</b> and scored <b>${score}</b> points with <b>${kos}</b> KOs.</p><button class="primary" id="again">TRY AGAIN</button></div>`;$('overlay').classList.remove('hide');$('again').onclick=start}
+function strike(){if(!playing||attackCooldown>0)return;attackCooldown=.48;burst(player.position.clone().add(new THREE.Vector3(0,0,-.7)),0x9b8cff);for(let i=enemies.length-1;i>=0;i--){let e=enemies[i],d=e.g.position.distanceTo(player.position);if(d<2.35){e.hp--;e.g.position.add(e.g.position.clone().sub(player.position).normalize().multiplyScalar(1.1));e.flash=.18;if(e.hp<=0){burst(e.g.position.clone(),0x67e8f9);scene.remove(e.g);enemies.splice(i,1);kos++;score+=e.boss?1000:100}}}score+=5;updateHud()}
+function dash(){if(!playing||dashCooldown>0)return;dashCooldown=1.3;invuln=.35;let v=new THREE.Vector3((keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0),0,(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0));if(v.length()<.1)v.set(0,0,-1);v.normalize();player.position.addScaledVector(v,2.2);player.position.x=THREE.MathUtils.clamp(player.position.x,-8.5,8.5);player.position.z=THREE.MathUtils.clamp(player.position.z,-8.5,8.5);burst(player.position.clone(),0x67e8f9)}
+document.querySelectorAll('.skin').forEach(b=>b.onclick=()=>{
+ selectedSkin=b.dataset.skin;$('skinLabel').textContent='Selected: '+skinColors[selectedSkin].label;
+ document.querySelectorAll('.skin').forEach(x=>x.style.outline=x===b?'3px solid white':'none');
+});
+$('start').onclick=start;$('strike').onpointerdown=e=>{e.preventDefault();strike()};$('dash').onpointerdown=e=>{e.preventDefault();dash()};
+$('left').onpointerdown=e=>{e.preventDefault();keys.ArrowLeft=true};$('left').onpointerup=()=>keys.ArrowLeft=false;$('left').onpointerleave=()=>keys.ArrowLeft=false;
+$('right').onpointerdown=e=>{e.preventDefault();keys.ArrowRight=true};$('right').onpointerup=()=>keys.ArrowRight=false;$('right').onpointerleave=()=>keys.ArrowRight=false;
+addEventListener('keydown',e=>{keys[e.key]=true;if(e.code==='Space'){e.preventDefault();strike()}if(e.key==='Shift')dash();if(e.key==='Enter'&&!playing)start()});
+addEventListener('keyup',e=>keys[e.key]=false);
+const clock=new THREE.Clock();
+function loop(){requestAnimationFrame(loop);let dt=Math.min(clock.getDelta(),.04);
+if(playing){attackCooldown=Math.max(0,attackCooldown-dt);dashCooldown=Math.max(0,dashCooldown-dt);invuln=Math.max(0,invuln-dt);
+let dx=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0),dz=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0);let v=new THREE.Vector3(dx,0,dz);if(v.length()>0){v.normalize();player.position.addScaledVector(v,5.5*dt);player.rotation.y=Math.atan2(v.x,v.z)}player.position.x=THREE.MathUtils.clamp(player.position.x,-8.6,8.6);player.position.z=THREE.MathUtils.clamp(player.position.z,-8.6,8.6);
+hero.parts.forEach((p,i)=>p.rotation.x=Math.sin(performance.now()*.012+i*Math.PI)*.14);
+spawnTimer-=dt;if(spawnTimer<=0&&enemies.length<3+wave){makeEnemy();spawnTimer=Math.max(.55,1.6-wave*.08)}
+if(enemies.length===0){waveDelay+=dt;if(waveDelay>2){wave++;waveDelay=0;score+=wave*50;spawnTimer=.3;updateHud();$('wave').textContent=(wave%5===0?'BOSS ':'')+wave}}else waveDelay=0;
+for(let i=enemies.length-1;i>=0;i--){let e=enemies[i];let dir=player.position.clone().sub(e.g.position);dir.y=0;let dist=dir.length();if(dist>1.15){dir.normalize();e.g.position.addScaledVector(dir,e.speed*dt);e.g.rotation.y=Math.atan2(dir.x,dir.z)}else{e.cool-=dt;if(e.cool<=0){e.cool=.9;if(invuln<=0){health-=10;invuln=.45;burst(player.position.clone(),0xff6688);updateHud();if(health<=0){finish();break}}}}}
+for(let i=effects.length-1;i>=0;i--){let e=effects[i];e.t-=dt;e.m.scale.multiplyScalar(1+dt*2);if(e.t<=0){scene.remove(e.m);effects.splice(i,1)}}
+camera.position.x+=(player.position.x*.25-camera.position.x)*dt*2;camera.position.z+=(15+player.position.z*.12-camera.position.z)*dt*2;camera.lookAt(player.position.x*.2,0,player.position.z*.2);
+}
+renderer.render(scene,camera)}
+loop();addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+</script>
+</body></html>
